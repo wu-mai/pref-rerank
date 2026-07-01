@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{User-representation ablation (RQ3): all three constructions of $u$ use the \texttt{no\_user\_bias} bilinear score. Behavioral features yield the strongest and tightest gain; the LLM-extracted typed schema is also significant but weaker; a random vector is not significant (CI crosses zero), ruling out pure session-identity memorization.}
+\label{tab:representation}
+\begin{tabular}{llrr}
+\toprule
+$u$ construction & Dim & nDCG@10 & $\Delta$ (95\% CI) \\
+\midrule
+Baseline & --- & 0.459 & --- \\
+Random vector (\texttt{random\_schema}) & 16 & 0.486 & +0.027 [$-$0.010, +0.065] \\
+LLM typed schema (\texttt{no\_user\_bias}) & 16 & 0.513 & +0.054 [+0.013, +0.094] \\
+\textbf{Behavioral features (\texttt{classic})} & 6 $\to$ 16 & \textbf{0.543} & \textbf{+0.084 [+0.034, +0.131]} \\
+\bottomrule
+\end{tabular}
+\end{table}

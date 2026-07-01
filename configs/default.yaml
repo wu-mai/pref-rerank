@@ -1,0 +1,33 @@
+# Default config for Pref-Rerank experiments
+# Override per-run via CLI args
+
+data:
+  dataset: aol-ia
+  min_session_len: 4        # history_k + 1
+  history_k: 3
+  topk_debias: 3            # drop clicks in top-3 SERP (position bias)
+  max_sessions: null        # null = all; set int for quick tests
+  seed: 42
+
+model:
+  backbone: castorini/monot5-base-msmarco
+  h_dim: 768
+  u_dim: 32
+  variant: full             # full | no_user_bias | linear_only | random_schema | classic
+
+training:
+  lr: 0.005                 # high lr ok — only 24K params
+  epochs: 10
+  batch_size: 64
+  early_stop_on: dev_loss
+
+eval:
+  n_negatives: 9            # 1 pos + 9 neg = 10 candidates per eval query
+  n_bootstrap: 10000
+  ci: 0.95
+
+llm:
+  model: gpt-5.4
+  temperature: 0.0
+  max_tokens: 200
+  cache_dir: cache/schema

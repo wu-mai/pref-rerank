@@ -1,0 +1,40 @@
+{
+  "variant": "classic",
+  "model_file": "results/r_classic_udim8.json",
+  "n_eval_sessions": 201,
+  "baseline": {
+    "n_sessions": 201,
+    "ndcg10": 0.4590010031351805,
+    "mrr": 0.30414988549316907,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "personalized": {
+    "n_sessions": 201,
+    "ndcg10": 0.5429732520281072,
+    "mrr": 0.4081418305298903,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "delta_ndcg10": 0.0839722488929267,
+  "paired_bootstrap_ci": {
+    "mean_diff": 0.08397224889292663,
+    "ci_low": 0.034417853651861875,
+    "ci_high": 0.13143179870722682,
+    "significant": true
+  },
+  "stratified": {
+    "high_rank_le3": {
+      "n": 0,
+      "baseline_ndcg10": 0.0,
+      "personalized_ndcg10": 0.0,
+      "delta": 0.0
+    },
+    "low_rank_gt3": {
+      "n": 201,
+      "baseline_ndcg10": 0.4590010031351805,
+      "personalized_ndcg10": 0.5429732520281072,
+      "delta": 0.0839722488929267
+    }
+  }
+}

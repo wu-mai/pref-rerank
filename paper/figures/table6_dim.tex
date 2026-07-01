@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{User-vector dimension ablation (RQ6), \texttt{classic} variant. The 6 behavioral features are zero-padded to $u_{\dim}$ and the bilinear matrix $A$ resized accordingly. The gain saturates at $u_{\dim}{=}8$: further capacity does not help and only inflates the parameter count. $u_{\dim}{=}16$ (our default) sits safely on the plateau.}
+\label{tab:dim}
+\begin{tabular}{rrrrr}
+\toprule
+$u_{\dim}$ & Params & nDCG@10 & $\Delta$ & 95\% CI \\
+\midrule
+4  & 3{,}076  & 0.525 & +0.066 & [+0.019, +0.112] \\
+8  & 6{,}152  & 0.543 & +0.084 & [+0.034, +0.131] \\
+16 & 12{,}304 & 0.543 & +0.084 & [+0.034, +0.131] \\
+32 & 24{,}608 & 0.543 & +0.084 & [+0.034, +0.131] \\
+64 & 49{,}216 & 0.543 & +0.084 & [+0.035, +0.132] \\
+\bottomrule
+\end{tabular}
+\end{table}

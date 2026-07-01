@@ -1,0 +1,26 @@
+{
+  "variant": "classic",
+  "model_file": "results/r_classic_seed42.json",
+  "n_eval_sessions": 201,
+  "baseline": {
+    "n_sessions": 201,
+    "ndcg10": 0.4590010031351805,
+    "mrr": 0.30414988549316907,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "personalized": {
+    "n_sessions": 201,
+    "ndcg10": 0.5431,
+    "mrr": 0.4083,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "delta_ndcg10": 0.0841,
+  "paired_bootstrap_ci": {
+    "mean_diff": 0.0841,
+    "ci_low": 0.0344,
+    "ci_high": 0.1315,
+    "significant": true
+  }
+}

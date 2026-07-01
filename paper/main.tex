@@ -1,0 +1,46 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\providecommand{\mathbbm}[1]{\mathbf{#1}}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+
+\begin{document}
+
+\title{Pref-Rerank: User-Conditioned Bilinear Score Intervention for Personalized Evidence Reranking}
+
+\titlerunning{Pref-Rerank for Personalized Web-RAG}
+
+\author{Anonymous Author(s)}
+\authorrunning{Anonymous}
+\institute{Anonymous Affiliation\\
+\email{anonymous@example.com}}
+
+\maketitle
+
+\begin{abstract}
+Query-log-based evidence reranking systems serve every user the same top-$k$ evidence passages, ignoring the evidence-type preferences that are implicit in a user's search history. We propose \emph{Pref-Rerank}, a minimal user-conditioning mechanism for the reranking stage: a single bilinear user$\times$document interaction term $h(q,d)^\top A\, u$ added to a frozen scorer's output, where $u \in \mathbb{R}^{16}$ is a compact user vector derived from session history. The module has only \textbf{12{,}288 trainable parameters} and trains in seconds on top of precomputed frozen features. On a 200k-session sample of the AOL query log ($n{=}201$ test sessions), the behavioral-features variant of Pref-Rerank improves session-level nDCG@10 from $0.459$ (user-agnostic) to $0.543$ ($\Delta{=}{+}0.084$, paired bootstrap 95\% CI $[+0.034, +0.131]$). The LLM-extracted typed-schema variant is also significant but weaker ($\Delta{=}{+}0.054$, CI $[+0.013, +0.094]$). Two findings stand out. First, the bilinear interaction $h^\top A u$ is the active mechanism: a user-only bias $w^\top u$ without document interaction contributes nothing. Second, random user vectors do \emph{not} yield a significant gain ($\Delta{=}{+}0.027$, CI $[-0.010, +0.065]$), which rules out the concern that the bilinear term merely memorizes session identity rather than modeling user signal. Behavioral features provide the strongest and most stable user representation; LLM-extracted schemas retain an interpretability advantage but not a ranking-quality advantage.
+
+\keywords{Web information retrieval \and Retrieval-augmented generation \and Personalized search \and Cross-encoder reranking \and Click-log learning}
+\end{abstract}
+
+\input{sections/01-introduction}
+\input{sections/02-related}
+\input{sections/03-method}
+\input{sections/04-experiments}
+\input{sections/05-discussion}
+\input{sections/06-conclusion}
+
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+\appendix
+\input{sections/07-appendix}
+
+\end{document}

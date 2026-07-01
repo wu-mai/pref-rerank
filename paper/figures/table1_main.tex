@@ -1,0 +1,13 @@
+\begin{table}[t]
+\centering
+\caption{Main result on 200k AOL sessions ($n{=}201$ test sessions). Pref-Rerank (\texttt{classic}: behavioral features + bilinear $h^\top A u$) vs.\ the user-agnostic frozen BM25+BGE baseline. $\Delta$ is the per-session nDCG@10 difference; CI from paired bootstrap (10k resamples). MRR reported for completeness; Recall@10 is 1.0 for all systems by construction (single relevant doc in a pool of 10).}
+\label{tab:main}
+\begin{tabular}{lrrr}
+\toprule
+System & nDCG@10 & MRR & $\Delta$ nDCG@10 (95\% CI) \\
+\midrule
+Baseline (user-agnostic) & 0.459 & 0.304 & --- \\
+\textbf{Pref-Rerank (\texttt{classic}, ours)} & \textbf{0.543} & \textbf{0.408} & \textbf{+0.084 [+0.034, +0.131]} \\
+\bottomrule
+\end{tabular}
+\end{table}

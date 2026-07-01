@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Multi-seed stability (RQ4). The \texttt{classic} variant trained under three independent seeds. The gain is stable: mean $\Delta{=}{+}0.081$, std $0.008$, and every seed's 95\% CI excludes zero. The result is not an artifact of a single initialization.}
+\label{tab:seed}
+\begin{tabular}{lrrr}
+\toprule
+Seed & nDCG@10 & $\Delta$ & 95\% CI \\
+\midrule
+42 & 0.543 & +0.084 & [+0.034, +0.131] \\
+1  & 0.531 & +0.072 & [+0.028, +0.117] \\
+2  & 0.546 & +0.087 & [+0.039, +0.137] \\
+\midrule
+\textbf{mean $\pm$ std} & \textbf{0.540 $\pm$ 0.008} & \textbf{+0.081 $\pm$ 0.008} & all CIs exclude zero \\
+\bottomrule
+\end{tabular}
+\end{table}

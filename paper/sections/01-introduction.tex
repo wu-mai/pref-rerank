@@ -1,0 +1,28 @@
+\section{Introduction}
+\label{sec:intro}
+
+Web-backed retrieval-augmented generation (RAG) systems~\cite{lewis2020rag,sun2024ragsurvey} answer user queries by retrieving web pages and conditioning a language model on the retrieved evidence. To keep latency and fetch cost low, these systems cache retrieved pages and re-rank a candidate set before generation. The re-ranking stage typically uses a strong frozen scorer such as a cross-encoder~\cite{nogueira2020monot5,qin2023llmrerank} that scores each (query, document) pair independently. A limitation of this design is that the score depends only on the query and the document: every user issuing the same query receives the same ranked evidence.
+
+This matters because the same query can mean different things to different users. A student searching ``MacBook'' and a designer searching ``MacBook'' may get the same candidate pages from the retriever, but one wants price comparisons and the other wants display specs. The cross-encoder has no way to tell them apart. The signal to disambiguate is in the session history, but the reranking stage ignores it.
+
+Existing approaches to personalized search fall into three families, each with a drawback. Click-log learning-to-rank~\cite{craswell2007click,joachims2007evaluating} models users through behavioral features but carries no semantic preference structure and is opaque. Prompt-based personalization conditions the reranker or generator on the raw history text, which is fragile under cold start and offers no learnable user representation. Heavier personalized reranker heads, which append learnable user modules to a cross-encoder, work but obscure the question we want to answer: \emph{what simple mechanism can make a frozen scorer user-aware?}
+
+We answer this question with \emph{Pref-Rerank}. Given a frozen scorer producing a base score $s_{\mathrm{base}}(q,d)$ and a document representation $h(q,d)\in\mathbb{R}^{768}$, we add one bilinear term $h(q,d)^\top A\, u$, where $u\in\mathbb{R}^{16}$ is a user vector and $A\in\mathbb{R}^{768\times 16}$ is the only trainable component (12{,}288 parameters). We study three ways to build $u$: an LLM-extracted typed preference schema, a six-dimensional behavioral feature vector, and a random vector as control. Training uses a session-level pairwise ranking loss on position-debiased (clicked, not-clicked) pairs from the AOL query log~\cite{pass2006_picture}.
+
+Two findings stand out. First, the bilinear term works: on a 200k-session sample of AOL (of which 201 test sessions survive candidate-set filtering) ($n{=}201$ test sessions), the behavioral-features variant raises session-level nDCG@10 from $0.459$ to $0.543$ ($\Delta{=}{+}0.084$, paired bootstrap 95\% CI $[+0.034, +0.131]$), with 12{,}288 trainable parameters. The LLM-schema variant is also significant but weaker ($\Delta{=}{+}0.054$). Second, a random user vector does \emph{not} yield a significant gain ($\Delta{=}{+}0.027$, CI $[-0.010, +0.065]$) --- the bilinear term exploits real user signal, not merely session identity.. A user-only bias $w^\top u$ without document interaction also contributes nothing. Figure~\ref{fig:hero} shows both results.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig1_hero_ndcg.pdf}
+\caption{Session-level nDCG@10 across six systems on 200k AOL sessions ($n{=}201$, error bars: paired bootstrap 95\% CI). Bilinear variants with real user signal (\texttt{classic} behavioral, \texttt{no\_user\_bias} LLM schema) significantly beat the baseline; \texttt{random\_schema} and \texttt{linear\_only} ($w^\top u$ only) do not. Behavioral features are the strongest user representation; LLM schema retains interpretability but not a ranking-quality edge.}
+\label{fig:hero}
+\end{figure}
+
+What this leaves open, and what the data argue against, is whether the bilinear gain depends on the specific user representation. The random-vector control (no signal, just a fixed per-session code) produces only $+0.027$, a non-significant difference; LLM-extracted typed schemas ($+0.054$, significant) and behavioral features ($+0.084$, significant) outperform it. The user vector is not the source of the gain --- the bilinear interaction mechanism is. We discuss in Sec.~\ref{sec:discussion} the possibility that the bilinear term partly models session identity rather than preference, and the limits of what $n{=}201$ can establish.
+
+\paragraph{Contributions.}
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item A simple effective bilinear score intervention for frozen scorers: one trainable matrix ($12{,}288$ parameters) improves session-level nDCG@10 by $+0.084$ on 200k AOL sessions ($n{=}201$, paired bootstrap 95\% CI $[+0.034, +0.131]$, Sec.~\ref{sec:exp}).
+\item A mechanism ablation isolating the bilinear term $h^\top A u$ as the active component: the user-only bias $w^\top u$ alone is indistinguishable from baseline (Sec.~\ref{sec:exp:mechanism}).
+\item A user-representation ablation with a clean control: behavioral features ($+0.084$) and LLM-extracted typed schemas ($+0.054$) are both significant, while random user vectors are not ($+0.027$, CI crosses zero). This does not support the session-identity-memorization hypothesis and shows the bilinear term exploits genuine user signal (Sec.~\ref{sec:exp:representation}).
+\end{itemize}

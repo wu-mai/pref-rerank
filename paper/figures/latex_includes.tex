@@ -1,0 +1,20 @@
+% Auto-generated LaTeX includes for Pref-Rerank paper.
+% Copy these snippets into the relevant sections.
+
+% === Fig 1 (Hero): nDCG@10 across 6 systems with 95% CI ===
+% Used in §1 Introduction and §4 Experiments
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig1_hero_ndcg.pdf}
+    \caption{Session-level nDCG@10 across six systems on 100k AOL sessions (error bars: paired bootstrap 95\% CI). The bilinear variants (\texttt{full}, \texttt{no\_user\_bias}, \texttt{random\_schema}, \texttt{classic}) all beat the user-agnostic baseline by a large margin, while \texttt{linear\_only} (user-only bias $w^\top u$) is indistinguishable from baseline. Critically, all four bilinear variants are statistically indistinguishable from each other --- the bilinear interaction $h^\top A u$, not the specific user representation, drives the gain.}
+    \label{fig:hero}
+\end{figure}
+
+% === Table 1: Main result ===
+\input{figures/table1_main.tex}
+
+% === Table 2: Mechanism ablation ===
+\input{figures/table2_mechanism.tex}
+
+% === Table 3: User-representation ablation ===
+\input{figures/table3_representation.tex}

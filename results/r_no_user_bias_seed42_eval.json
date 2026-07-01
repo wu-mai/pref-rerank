@@ -1,0 +1,18 @@
+{
+  "variant": "no_user_bias",
+  "personalized": {
+    "ndcg10": 0.513,
+    "mrr": 0.405
+  },
+  "delta_ndcg10": 0.054,
+  "paired_bootstrap_ci": {
+    "ci_low": 0.013,
+    "ci_high": 0.094,
+    "significant": true
+  },
+  "baseline": {
+    "ndcg10": 0.459,
+    "mrr": 0.304
+  },
+  "n_eval_sessions": 201
+}

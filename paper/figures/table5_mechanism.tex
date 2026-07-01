@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Mechanism comparison (RQ5): the bilinear form against two equally minimal alternatives that also couple $h$ and $u$, under the \texttt{classic} user representation. Concatenation-plus-linear (785 params) is significant but weaker; FiLM-style modulation (26{,}112 params) matches the bilinear gain at $2.1\times$ the parameters. The bilinear form is Pareto-optimal: fewest parameters, strongest gain.}
+\label{tab:pareto}
+\begin{tabular}{lrrrr}
+\toprule
+Mechanism & Params & nDCG@10 & $\Delta$ & 95\% CI \\
+\midrule
+Baseline & 0 & 0.459 & --- & --- \\
+concat + linear & 785 & 0.513 & +0.054 & [+0.011, +0.095] \\
+FiLM ($\gamma,\beta = Wu$) & 26{,}112 & 0.540 & +0.081 & [+0.031, +0.128] \\
+\textbf{bilinear $h^\top A u$ (ours)} & \textbf{12{,}304} & \textbf{0.543} & \textbf{+0.084} & \textbf{[+0.034, +0.131]} \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,20 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Retrieval-augmented generation.}
+RAG~\cite{lewis2020rag} has become the standard paradigm for grounding LLM generation in external knowledge. Recent work extends it with self-reflection~\cite{asai2024selfrag}, active retrieval~\cite{jiang2023adaptive}, and structured retrieval planning~\cite{gao2023selfrag}. Comprehensive surveys~\cite{sun2024ragsurvey} systematize the growing design space. Our work does not modify the retrieval or generation stages; it targets the evidence \emph{reranking} stage that sits between them, and shows that a compact user-conditioning term on a frozen reranker can improve what evidence reaches the generator.
+
+\paragraph{Personalized search and click-log learning-to-rank.}
+A long line of work models the user from search logs. Click-bipartite and session-based approaches~\cite{craswell2007click,joachims2017unbiased} treat clicks as implicit feedback and learn ranking functions from click logs, with explicit attention to position bias~\cite{joachims2007evaluating,craswell2008experimental}. These methods are practical and deployable but model the user through behavioral aggregates: click entropy, dwell-time proxies, reformulation patterns --- none of which carry semantic preference structure or support inspection. Pref-Rerank uses the same AOL click signal for supervision but introduces a structured, learnable user vector and intervenes at the rerank score rather than in the feature space of a learning-to-rank model.
+
+\paragraph{LLM-based reranking and user preference extraction.}
+Large language models have been used directly for passage reranking through pairwise~\cite{qin2023llmrerank,gao2024pairwise} and listwise~\cite{pradeep2023rankgpt} prompting. PMG~\cite{shi2024pmg} extracts both explicit preference keywords and implicit soft embeddings from user history for personalized multimodal generation. Our schema-constrained extraction follows a similar philosophy but targets the \emph{reranking} stage, and our ablation (Sec.~\ref{sec:exp}) shows that the specific extraction is not the source of the gain --- the bilinear injection mechanism is. Structured context extraction for personalization~\cite{zhu2024personalized} is a related direction; we differ by injecting the extracted structure into a learnable bilinear score rather than a prompt.
+
+\paragraph{Cross-encoder and dense retrieval.}
+Cross-encoders such as monoT5~\cite{nogueira2020monot5} and late-interaction models such as ColBERT~\cite{khattab2020colbert} set the state of the art on passage retrieval and reranking. Dense passage retrieval~\cite{karpukhin2020dpr} and frozen encoders like BGE~\cite{xiao2023bge} provide strong document representations. We do not propose a new cross-encoder; we propose a lightweight intervention applicable to any frozen scorer that exposes a scalar score and a document representation, instantiated on a BM25~\cite{robertson2009bm25} + BGE query-flow backbone suited to the click-log setting.
+
+\paragraph{Recommendation-style bilinear user modeling.}
+The bilinear form $h^\top A u$ is classical in recommendation~\cite{he2017nfm,xiao2017afm}: it factorizes user--item interactions into a low-rank coupling. We transfer this idea from recommendation to evidence reranking, where the ``item'' is a retrieved document and the ``user'' is a search session, and we show that a single such term with only 12{,}288 parameters is sufficient on top of a frozen backbone.
+
+\paragraph{Query-log corpora.}
+We use AOL-IA, the Internet-Archive-snapshot version of the AOL query log~\cite{pass2006_picture}, accessed through \texttt{ir\_datasets}. The log provides 36M queries across 657K anonymized users with click and rank information but no document text; we therefore represent each document by the bag of queries that led to it being clicked, the standard query-flow representation in search-log IR.

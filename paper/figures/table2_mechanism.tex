@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Mechanism ablation (RQ2): which score term drives the gain? Only the bilinear term $h^\top A u$ contributes; the user-only bias $w^\top u$ alone is indistinguishable from baseline, and adding it on top of the bilinear term yields no further gain. $\Delta$ vs.\ user-agnostic baseline; CI from paired bootstrap.}
+\label{tab:mechanism}
+\begin{tabular}{lcrr}
+\toprule
+Variant & Score formula & nDCG@10 & $\Delta$ (95\% CI) \\
+\midrule
+Baseline & $s_{\mathrm{base}}$ & 0.459 & --- \\
+\texttt{linear\_only} & $s_{\mathrm{base}} + w^\top u$ & 0.459 & +0.000 [+0.000, +0.000] \\
+\texttt{no\_user\_bias} & $s_{\mathrm{base}} + h^\top A u$ & 0.513 & +0.054 [+0.013, +0.094] \\
+\texttt{full} & $s_{\mathrm{base}} + w^\top u + h^\top A u$ & 0.513 & +0.054 [+0.013, +0.094] \\
+\bottomrule
+\end{tabular}
+\end{table}
