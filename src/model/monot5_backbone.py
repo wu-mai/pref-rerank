@@ -150,7 +150,11 @@ class FeatureCache:
         self._mem[pair_hash(query, doc)] = (s_base, h)
 
     def save(self) -> None:
-        torch.save(self._mem, self._cache_file())
+        # Atomic save: write to .tmp then rename, so a crash mid-save
+        # does not leave a corrupt features.pt.
+        tmp = self._cache_file().with_suffix(".pt.tmp")
+        torch.save(self._mem, tmp)
+        tmp.replace(self._cache_file())
 
     def __len__(self) -> int:
         return len(self._mem)

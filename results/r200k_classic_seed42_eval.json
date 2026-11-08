@@ -1,0 +1,40 @@
+{
+  "variant": "classic",
+  "model_file": "results/r200k_classic_seed42.json",
+  "n_eval_sessions": 28,
+  "baseline": {
+    "n_sessions": 28,
+    "ndcg10": 0.41137052236006305,
+    "mrr": 0.2500425170068027,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "personalized": {
+    "n_sessions": 28,
+    "ndcg10": 0.6029325271801093,
+    "mrr": 0.49080215419501133,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "delta_ndcg10": 0.1915620048200462,
+  "paired_bootstrap_ci": {
+    "mean_diff": 0.19156200482004634,
+    "ci_low": 0.015835161466219674,
+    "ci_high": 0.36200648287529386,
+    "significant": true
+  },
+  "stratified": {
+    "high_rank_le3": {
+      "n": 0,
+      "baseline_ndcg10": 0.0,
+      "personalized_ndcg10": 0.0,
+      "delta": 0.0
+    },
+    "low_rank_gt3": {
+      "n": 28,
+      "baseline_ndcg10": 0.41137052236006305,
+      "personalized_ndcg10": 0.6029325271801093,
+      "delta": 0.1915620048200462
+    }
+  }
+}

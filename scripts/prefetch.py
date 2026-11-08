@@ -41,7 +41,9 @@ def main():
     ap.add_argument("--history-k", type=int, default=3)
     ap.add_argument("--topk-debias", type=int, default=3)
     ap.add_argument("--feature-cache", default="cache/features_queryflow")
-    ap.add_argument("--doc-click-cache", default="cache/doc_click_queries.pkl")
+    ap.add_argument("--doc-click-cache", default="cache/data/doc_click_queries.pkl")
+    ap.add_argument("--encoder-name", default="cache/bge_local",
+                    help="Local sentence encoder (path or HF name)")
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
@@ -86,7 +88,7 @@ def main():
             "doc_click_queries cache not found. Run `python scripts/prepare_data.py` first."
         )
 
-    backbone = QueryFlowBackbone(doc_click_queries)
+    backbone = QueryFlowBackbone(doc_click_queries, encoder_name=args.encoder_name)
     cache = FeatureCache(args.feature_cache)
     logger.info("Cache has %d pre-existing entries", len(cache))
 

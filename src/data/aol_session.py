@@ -232,9 +232,13 @@ def load_aol_sessions_cached_or_fresh(
     seed: int = 42,
     cache_path: str | Path = "cache/data/sessions.pkl",
 ) -> list[Session]:
-    """Try cache first; fall back to fresh qlog load if cache missing.
+    """Try cache first; fall back to local tarball, then ir_datasets.
 
     This is the recommended entry point for all downstream scripts.
+
+    Note: If the cache is missing, the function first tries the local
+    tarball at /root/gcy/Rerank/data/aol-data.tar.gz (fast, CDN-independent),
+    and only falls back to ir_datasets' AOL-IA mirror as a last resort.
     """
     cached = load_cached_sessions(cache_path)
     if cached is not None:
@@ -244,27 +248,50 @@ def load_aol_sessions_cached_or_fresh(
             sessions = [s for s in sessions if len(s.events) >= min_session_len]
         logger.info("Using %d cached sessions (min_len=%d)", len(sessions), min_session_len)
     else:
-        logger.info("No cache found, loading from qlog (slow, first time)...")
-        sessions = load_aol_sessions(min_session_len=min_session_len, max_sessions=max_sessions, seed=seed)
+        # Try the local tarball fallback before ir_datasets (slow CDN)
+        local_tarball = Path("/root/gcy/Rerank/data/aol-data.tar.gz")
+        if local_tarball.exists():
+            logger.info("No cache at %s; falling back to local tarball %s",
+                        cache_path, local_tarball)
+            from src.data.aol_local import iter_local_qlogs
+            from collections import defaultdict
+            qlogs = iter_local_qlogs(local_tarball)
+            by_user: dict[str, list] = defaultdict(list)
+            for q in qlogs:
+                items = [
+                    SerpItem(doc_id=str(it.doc_id), rank=it.rank, clicked=bool(it.clicked))
+                    for it in q.items
+                ]
+                by_user[q.user_id].append((q.query, q.time, items))
+            sessions = []
+            for anon_id, recs in by_user.items():
+                recs.sort(key=lambda r: r[1])
+                current: list = []
+                last_ts: Optional[float] = None
+                for r in recs:
+                    ts = r[1]
+                    if last_ts is not None and (ts - last_ts) > SESSION_GAP_SEC:
+                        if len(current) >= min_session_len:
+                            sessions.append(_to_session(anon_id, current, len(sessions)))
+                        current = []
+                    current.append(r)
+                    last_ts = ts
+                if len(current) >= min_session_len:
+                    sessions.append(_to_session(anon_id, current, len(sessions)))
+        else:
+            logger.info("No cache found, loading from qlog via ir_datasets (slow, first time)...")
+            sessions = load_aol_sessions(min_session_len=min_session_len, max_sessions=max_sessions, seed=seed)
 
     if max_sessions and len(sessions) > max_sessions:
         rng = random.Random(seed)
         rng.shuffle(sessions)
         sessions = sessions[:max_sessions]
     return sessions
-    events = [
-        QueryEvent(
-            query=r[0],
-            time=r[1],
-            items=r[2],
-        )
-        for r in recs
-    ]
-    return Session(
-        session_id=f"{anon_id}_{sid}",
-        anon_id=anon_id,
-        events=events,
-    )
+
+
+# ---------------------------------------------------------------------------
+# Training pair construction (TRUE SERP-based negatives)
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------

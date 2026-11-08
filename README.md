@@ -14,8 +14,8 @@ A lightweight bilinear score intervention (12,288 trainable parameters) on top o
 | `src/` | Core model and data code |
 | `scripts/` | Training, evaluation, sanity checks |
 | `configs/` | Hyperparameters |
-| `paper/` | LaTeX source (LNCS) for the paper |
-| `paper/figures/` | All LaTeX tables (table1-6) + hero figure PDF |
+| `paper/` | LaTeX source for the ICASSP 2027 submission (spconf + IEEEbib) |
+| `paper/figures/` | Paper figures (fig1, fig_concept, fig2, fig_pareto) |
 | `results/` | Evaluation outputs only (no model weights) |
 
 ---
@@ -142,8 +142,8 @@ scripts/
 ├── b6_counterfactual.py           # Counterfactual rank-shift inspection
 └── b7_annotation.py               # Schema validation annotation interface
 
-paper/                             # LaTeX source for the paper
-paper/figures/                     # All 6 tables + hero figure PDF
+paper/                             # ICASSP 2027 submission LaTeX source
+paper/figures/                     # Paper figures + compiled PDF
 
 results/                           # Trained models + eval JSONs (~1.5MB)
 ```

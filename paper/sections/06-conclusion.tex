@@ -1,4 +1,0 @@
-\section{Conclusion}
-\label{sec:conclusion}
-
-Pref-Rerank adds one trainable matrix ($12{,}288$ parameters) to a frozen scorer and improves session-level nDCG@10 by $+0.084$ on a 200k-session AOL sample ($n{=}201$ test sessions, paired bootstrap 95\% CI $[+0.034, +0.131]$). The bilinear user$\times$document interaction is the active component: removing it collapses performance to baseline. The gain requires genuine user signal --- random user vectors are not significant ($+0.027$, CI crosses zero) --- which does not support the session-identity-memorization hypothesis. Behavioral features provide the strongest and most stable user representation; LLM-extracted typed schemas are also significant but weaker, and retain an interpretability advantage. Two follow-ups would further strengthen the contribution: (i) robustness checks to alternative negative-sampling constructions, and (ii) testing on doc-aware backbones once full document text is available.

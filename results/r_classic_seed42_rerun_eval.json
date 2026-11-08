@@ -1,0 +1,40 @@
+{
+  "variant": "classic",
+  "model_file": "results/r_classic_seed42.json",
+  "n_eval_sessions": 120,
+  "baseline": {
+    "n_sessions": 120,
+    "ndcg10": 0.41194006760051444,
+    "mrr": 0.25173280423280425,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "personalized": {
+    "n_sessions": 120,
+    "ndcg10": 0.7004487262834022,
+    "mrr": 0.6164219576719577,
+    "recall10": 1.0,
+    "recall20": 1.0
+  },
+  "delta_ndcg10": 0.2885086586828877,
+  "paired_bootstrap_ci": {
+    "mean_diff": 0.2885086586828876,
+    "ci_low": 0.2080774007880865,
+    "ci_high": 0.3670548142484339,
+    "significant": true
+  },
+  "stratified": {
+    "high_rank_le3": {
+      "n": 0,
+      "baseline_ndcg10": 0.0,
+      "personalized_ndcg10": 0.0,
+      "delta": 0.0
+    },
+    "low_rank_gt3": {
+      "n": 120,
+      "baseline_ndcg10": 0.41194006760051444,
+      "personalized_ndcg10": 0.7004487262834022,
+      "delta": 0.2885086586828877
+    }
+  }
+}

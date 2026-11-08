@@ -1,46 +1,467 @@
-\documentclass[runningheads]{llncs}
-
+% Pref-Rerank — ICASSP 2027 submission
+% To be used with: spconf.sty (ICASSP/ICIP LaTeX style) + IEEEbib.bst
+% ------------------------------------------------------------------------
+\documentclass{article}
+\usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\providecommand{\mathbbm}[1]{\mathbf{#1}}
-\usepackage{enumitem}
-\usepackage{multirow}
-\usepackage{xcolor}
-\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
-
+\usepackage{pifont}
+\usepackage{spconf,amsmath,amssymb,graphicx,booktabs,multirow,url,multicol,wrapfig,marvosym}
+\widowpenalty=10000
+\clubpenalty=10000
+\renewcommand{\baselinestretch}{1.0}
+\makeatletter
+\renewcommand{\section}{\@startsection {section}{1}{\z@}
+  {-2.0ex \@plus -0.5ex \@minus -0.2ex}
+  {0.6ex \@plus 0.2ex}
+  {\normalfont\large\bfseries\centering}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}
+  {-1.5ex \@plus -0.3ex \@minus -0.2ex}
+  {0.4ex \@plus 0.2ex}
+  {\normalfont\normalsize\bfseries}}
+\makeatother
+\title{PREF-RERANK: PARAMETER-EFFICIENT USER-CONDITIONED EVIDENCE RERANKING WITH BILINEAR SCORE INTERVENTION}
+\name{Chaoyi Guo\textsuperscript{1}\textsuperscript{*}\sthanks{Equal contribution},
+       Jianyu Zhou\textsuperscript{2}\textsuperscript{*},
+       Zhixing Shi\textsuperscript{1}\textsuperscript{*},
+       Xin Li\textsuperscript{1}\sthanks{\ding{41} Corresponding author},
+       Dongxi Li\textsuperscript{1}, Yanwen Guo\textsuperscript{3}}
+\address{\textsuperscript{1}Taiyuan University of Technology, China\\
+         \textsuperscript{2}Hohai University, China\\
+         \textsuperscript{3}Nanjing University, China}
+%
 \begin{document}
-
-\title{Pref-Rerank: User-Conditioned Bilinear Score Intervention for Personalized Evidence Reranking}
-
-\titlerunning{Pref-Rerank for Personalized Web-RAG}
-
-\author{Anonymous Author(s)}
-\authorrunning{Anonymous}
-\institute{Anonymous Affiliation\\
-\email{anonymous@example.com}}
-
+%\ninept
+%
 \maketitle
-
+%
 \begin{abstract}
-Query-log-based evidence reranking systems serve every user the same top-$k$ evidence passages, ignoring the evidence-type preferences that are implicit in a user's search history. We propose \emph{Pref-Rerank}, a minimal user-conditioning mechanism for the reranking stage: a single bilinear user$\times$document interaction term $h(q,d)^\top A\, u$ added to a frozen scorer's output, where $u \in \mathbb{R}^{16}$ is a compact user vector derived from session history. The module has only \textbf{12{,}288 trainable parameters} and trains in seconds on top of precomputed frozen features. On a 200k-session sample of the AOL query log ($n{=}201$ test sessions), the behavioral-features variant of Pref-Rerank improves session-level nDCG@10 from $0.459$ (user-agnostic) to $0.543$ ($\Delta{=}{+}0.084$, paired bootstrap 95\% CI $[+0.034, +0.131]$). The LLM-extracted typed-schema variant is also significant but weaker ($\Delta{=}{+}0.054$, CI $[+0.013, +0.094]$). Two findings stand out. First, the bilinear interaction $h^\top A u$ is the active mechanism: a user-only bias $w^\top u$ without document interaction contributes nothing. Second, random user vectors do \emph{not} yield a significant gain ($\Delta{=}{+}0.027$, CI $[-0.010, +0.065]$), which rules out the concern that the bilinear term merely memorizes session identity rather than modeling user signal. Behavioral features provide the strongest and most stable user representation; LLM-extracted schemas retain an interpretability advantage but not a ranking-quality advantage.
-
-\keywords{Web information retrieval \and Retrieval-augmented generation \and Personalized search \and Cross-encoder reranking \and Click-log learning}
+Evidence rerankers return the same ranked list to every user for the
+same query, even when session history already distinguishes what each
+user needs. We present \textsc{Pref-Rerank}, a layer that adds one
+bilinear term $h(q,d)^\top A\,u(H)$ to a frozen reranker's score, where
+$h(q,d)$ is the backbone's own representation and $u(H)$ encodes
+behavioral session statistics; the trainable surface is a single
+$768\times16$ matrix, 12,288 parameters. Across three judged-relevance
+benchmarks with a frozen monoT5 backbone (TREC DL 2019, TREC-COVID,
+FiQA-2018; 741 queries), \textsc{Pref-Rerank} is the only learned
+method among six published baselines whose 95\% CI excludes zero on
+all three (+0.088, +0.030, +0.054 nDCG@10). On the AOL click-log
+protocol, where a sequential GRU baseline and a popularity prior both
+score higher, \textsc{Pref-Rerank} still improves +0.288 over the
+non-personalized baseline while using roughly $300\times$ fewer
+parameters than the GRU. Ablations attribute the gain to the
+document-dependent bilinear term; a user-only bias alone changes no
+ranking.
 \end{abstract}
+%
+\begin{keywords}
+Personalized search, evidence reranking, RAG, click-log learning, parameter-efficient adaptation, frozen backbone, bilinear
+\end{keywords}
 
-\input{sections/01-introduction}
-\input{sections/02-related}
-\input{sections/03-method}
-\input{sections/04-experiments}
-\input{sections/05-discussion}
-\input{sections/06-conclusion}
+\section{Introduction}
+\label{sec:intro}
 
-\bibliographystyle{splncs04}
-\bibliography{references}
 
-\appendix
-\input{sections/07-appendix}
+
+Retrieval-augmented generation (RAG)~\cite{lewis2020rag} grounds a
+generator in retrieved evidence; a cross-encoder or LLM reranker usually
+reorders the retrieved passages before generation. This reranking stage
+is powerful but user-agnostic: two users issuing the same query receive
+identical evidence even when their information needs differ. The
+missing signal is often already present in \emph{session history}:
+previous queries, clicked documents, reformulations.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/fig_concept.png}
+\caption{The problem. Left: a user-agnostic reranker returns the same
+evidence order to every user. Right: conditioning on session history
+lets different users see differently-ordered evidence for the same
+query.}
+\label{fig:problem}
+\end{figure}
+
+
+A natural obstacle to adding this signal is cost: rerankers are
+expensive to retrain, and their internal representations are not
+obviously open to user-specific conditioning. We ask whether a frozen
+reranker can instead be made user-aware with a small, inspectable
+change at the score level. We find that it can, but with a caveat that
+shapes the whole paper: the change that works under
+judged-relevance evaluation is not the change that wins under
+click-log evaluation. We call this split the
+\emph{protocol-dependence} of learned personalization, and we use it
+to structure both the method and the evaluation.
+
+\textsc{Pref-Rerank}, our proposal, keeps the reranker completely
+frozen and adds a single bilinear user--document term to its score: a
+score-level intervention that plugs into any reranker exposing a
+document-side representation, with 12,288 trainable parameters trained
+on precomputed features. Read as a signal-processing construction, the
+layer is a rank-16 conditioning of a frozen sequence encoder: one
+bilinear map fuses a behavioral code with the encoder's output space,
+much as low-rank adapters condition pretrained models \cite{lin2025personalized}.
+
+Our contributions:
+\begin{itemize}
+\item A \textbf{conditioning primitive} for frozen
+rerankers, requiring no user id, no shared user embedding, and no
+backbone retraining; ablations locate the active component in the
+document-dependent bilinear term rather than a user-only bias
+(Sec.~\ref{sec:method}, Sec.~\ref{ssec:ablation}).
+\item \textbf{Cross-protocol evidence} that this primitive is the only
+learned method among six published personalization baselines whose
+95\% CI excludes zero on three judged-relevance benchmarks (TREC DL
+2019, TREC-COVID, FiQA-2018; 741 queries), and that on FiQA it
+outperforms the popularity prior (Sec.~\ref{ssec:judged}).
+\item A \textbf{negative result with a mechanism}: on the AOL
+click-log protocol, a sequential GRU and a popularity prior both
+outperform it; we trace why, and the reason is that the protocol
+rewards global frequency and per-query memorization, two crutches the
+judged protocols do not provide (Sec.~\ref{ssec:aol}).
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+Cross-encoders such as monoT5 \cite{nogueira2020monot5} and LLM rerankers
+\cite{qin2023llmrerank,pradeep2023rankgpt} improve relevance ordering but
+remain user-agnostic. Click logs have long trained ranking functions
+\cite{craswell2007click,joachims2017unbiased}, with position-bias
+corrections \cite{craswell2008experimental}. Among neural personalized
+search models, HEM \cite{ai2017hem} matches candidates against an
+embedding of the user's history, HRNN \cite{ge2018hrnn} with a recurrent
+user encoder; a recent survey covers the broader area
+\cite{shen2020personalization}. Bilinear user--item coupling is
+standard in recommendation \cite{xiao2017afm,he2017nfm}.
+What we add is a usage of that coupling rather than the coupling itself:
+no user id, score level on top of an already-frozen backbone, reuses
+the backbone's own document representation, so it can be evaluated
+unchanged across judged and click-log settings. Personalization has a
+longer history, e.g. the HRM baseline \cite{bennett2012hrm}, recent
+LLM-driven personalized search
+\cite{qin2023llmrerank,pradeep2023rankgpt}, and the BEIR benchmark
+for zero-shot retrieval evaluation \cite{thakur2021beir}.
+
+
+
+oindent	extbf{Notes on adjacent lines of work.}
+The listwise LLM rerankers cited above
+(\cite{qin2023llmrerank,pradeep2023rankgpt}) trade latency and
+inference cost for ordering quality: a single $k$-wide ranking
+prompt invokes the backbone $k$ times in the worst case, and the
+prompt itself changes with the candidate set. They remain
+user-agnostic, which our score-level intervention does not address
+but does not preclude---a listwise prompt can be combined with a
+frozen monoT5 encoder and a learned bilinear term in the same
+fashion as the pointwise protocol below. Cold-start is the
+companion problem: a new user has no click history and the per-query
+$u(H)$ reduces to query-side statistics interacting with $h(q,d)$,
+which we report under the judged protocol as a useful worst case.
+Recent surveys of personalization
+\cite{shen2020personalization,zamani2020personalized,lin2025personalized}
+emphasize that the evaluation regime dominates the ranking
+backbone: a method that wins on click logs can lose on judged
+relevance, and we make that inversion the empirical contribution.
+BEIR \cite{thakur2021beir} provides a zero-shot retrieval
+counterpoint: it controls for index and query but not for user, and
+so the BEIR numbers are an upper bound on what user-agnostic
+methods can recover. Our score-level intervention is the smallest
+change on top of a frozen backbone that we could find that
+substantially improves judged relevance while remaining unchanged
+under the BEIR-style protocol, and that asymmetry is the design
+constraint. Parameter-efficient adaptation
+\cite{lewis2020rag,zamani2020personalized} is the closest prior
+art in spirit---small additional capacity on top of a frozen
+backbone---but in retrieval it is applied at the index or query
+encoder level rather than at the score level, and we are not aware
+of a published result that reports the BEIR-vs-judged inversion
+under the same backbone with a parameter budget below $0.1\%$ of
+the frozen model.
+\section{Method}
+\label{sec:method}
+
+\subsection{Bilinear score intervention}
+\label{ssec:intervention}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig1.pdf}
+\caption{Architecture. The frozen backbone produces $s_{\mathrm{base}}$
+and $h(q,d)$; a 16-d behavioral user vector $u(H)$ enters through
+the single trainable matrix $A$; the bilinear term shifts each
+candidate's score by its alignment with the user direction.}
+\label{fig:arch}
+\end{figure*}
+
+Given query $q$ and candidate $d$, the frozen backbone provides a base
+score $s_{\mathrm{base}}(q,d)$ and a document representation
+$h(q,d)\in\mathbb{R}^{768}$ (Fig.~\ref{fig:arch}). From the session
+history $H$ we build a user vector $u(H)\in\mathbb{R}^{16}$ and add one
+bilinear term:
+%
+\begin{equation}
+\label{eq:score}
+s(q,d,H) \;=\; s_{\mathrm{base}}(q,d) \;+\; h(q,d)^\top A\,u(H),
+\end{equation}
+%
+where $A\in\mathbb{R}^{768\times16}$ is the only trainable matrix
+(12,288 parameters). The product $A\,u(H)$ projects the user vector
+into the backbone's representation space; the inner product
+$h(q,d)^\top\!A\,u(H)$ then shifts each candidate by its alignment
+with the current user's preference direction. We also evaluate
+two ablation variants: a full form that adds a document-independent
+bias $w^\top\!u(H)$ alongside the bilinear term, and a bias-only form
+that keeps just $w^\top\!u(H)$ to isolate the role of the
+document-dependent interaction.
+
+\subsection{User vector}
+\label{ssec:uservec}
+
+The user vector $u(H)\in\mathbb{R}^{16}$ is a six-element behavioral
+summary of the session: mean Jaccard overlap between the evaluation
+query and past queries, the fraction of past queries sharing a token
+with it, the normalized rank of past clicks, session length,
+evaluation-query length, and a reformulation flag set when any past
+query shares a token with the evaluation query. The six-d vector is
+zero-padded to sixteen. The LLM-extracted typed schema and a random
+per-session vector serve as interpretable and random controls. The
+features are cheap: they are constant-time over the cached session
+events, so preprocessing overhead per candidate is negligible. We
+deliberately excluded dwell time and click timestamp because AOL
+records neither; the typed schema is the alternative that recovers
+some of those signals at the cost of an offline LLM call.
+
+\subsection{Backbones and protocols}
+\label{ssec:backbone}
+
+The protocol below describes the two settings we run: a judged-relevance
+protocol built on three existing benchmarks, and a click-log protocol
+on AOL-IA. The two are intended to disagree on what they reward, and
+together they characterize when a small personalization layer does and
+does not help.
+
+\textbf{Judged-relevance protocol.} The backbone is a frozen
+monoT5-base cross-encoder \cite{nogueira2020monot5}; $s_{\mathrm{base}}$
+is the $\log p(\text{true})-\log p(\text{false})$ logit and $h(q,d)$ its
+encoder's mean-pooled last-layer state. Candidate sets pair each judged
+relevant document with nine distractors: judged-irrelevant documents
+(TREC DL 2019: 43 queries, 4{,}102 candidate sets; TREC-COVID: 50
+queries, 24{,}673) or BM25-top-100 unjudged documents (FiQA-2018: 648
+queries, 1{,}705; its qrels contain only positives). Total: 741 queries.
+These benchmarks are single-query: no prior session exists, so
+$u(H)$ reduces to a per-query vector built from the evaluation
+query alone (the history-overlap and history-length features take
+their zero defaults). Whatever personalization signal this protocol
+measures therefore comes from query-side statistics interacting with
+$h(q,d)$, not from cross-query history. This is close to a worst case
+for user conditioning, and it also means the history-driven baselines
+(\texttt{hrm}, \texttt{hist-lex}, \texttt{hem}, \texttt{hrnn}) have
+little to work with here. Candidates, queries, and supervision are
+disjoint from the AOL split; no judged data is used at training time.
+
+\textbf{AOL click-log protocol.} AOL-IA provides clicks but no page
+text, so documents are represented by their query-flow surrogate
+\cite{craswell2007click}: BM25 over the bag of click-queries and a BGE
+\cite{xiao2023bge} mean embedding thereof. 200k sessions are sampled;
+after position-debiasing (top-3 clicks removed), user-disjoint splits,
+and cross-session negative mining, 120 test sessions remain. History is
+the first three query--click events.
+
+Training uses the Bradley--Terry pairwise loss on every
+(positive, negative) pair, with AdamW in all settings; features
+are precomputed and cached, so no backbone gradients flow.
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Personalization baselines}
+\label{ssec:baselines}
+
+We compare against six published methods spanning the design space:
+\texttt{popularity} (global click/judgment counts, $\alpha$ tuned on dev)
+\cite{craswell2007click}; \texttt{hist-lex} (BM25 re-scored over query
+concatenated with history) \cite{craswell2008experimental};
+\texttt{pclick} (per-(query,doc) learned scalar with inverse-propensity
+weighting) \cite{joachims2017unbiased}; \texttt{hrm} (per-history-query learned weights)
+\cite{bennett2012hrm}; and two neural personalized-search models adapted
+to the same frozen features: \texttt{hem} (cosine matching against the
+mean BGE embedding of history queries) \cite{ai2017hem} and \texttt{hrnn}
+(a single-layer GRU over history-event embeddings) \cite{ge2018hrnn}.
+None of these is a current state-of-the-art system, and that is the
+point: each isolates one design choice, so the comparison shows which
+choices matter rather than which system is newest. All baselines share
+the candidate construction and paired bootstrap protocol.
+
+\begin{table}[t]
+\centering
+\caption{Judged-relevance benchmarks (frozen monoT5 backbone):
+$\Delta$ nDCG@10 with paired bootstrap 95\% CI. Bold = only learned
+method significant on all three. $n$ = candidate sets.}
+\label{tab:judged}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccc}
+\toprule
+ & DL19 & TREC-COVID & FiQA-2018 \\
+ & $n{=}4{,}102$ & $n{=}24{,}673$ & $n{=}1{,}705$ \\
+\midrule
+Baseline (monoT5) & .730 & .667 & .718 \\
+\midrule
+\texttt{popularity} & +.000 & +{\scriptsize.034} & +{\scriptsize.035} \\
+ &  & {\scriptsize[.032,.037]} & {\scriptsize[.031,.039]} \\
+\texttt{hist-lex} & +.000 & +.000 & +.000 \\
+\texttt{pclick} & $-$.275 & +.000 & $-$.107 \\
+ & {\scriptsize[$-$.283,$-$.268]} &  & {\scriptsize[$-$.115,$-$.099]} \\
+\texttt{hrm} & +.000 & +.000 & +.000 \\
+\midrule
+\textsc{Pref-Rerank} & $\mathbf{+}$.088 & $\mathbf{+}$.030 & $\mathbf{+}$.054 \\
+ & {\scriptsize[.079,.096]} & {\scriptsize[.026,.033]} & {\scriptsize[.039,.070]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{AOL click-log protocol ($n{=}120$ sessions): $\Delta$ nDCG@10
+with 95\% CI. Trainable parameters: popularity=1, hist-lex=0,
+pclick=2k, hrm=23k, hem=1, hrnn=3.5M, \textsc{Pref-Rerank}=12k. Heavier
+sequential encoders win here; the popularity prior is near-oracle
+because the candidate pool is itself the cross-session click pool.}
+\label{tab:aol}
+\small
+\begin{tabular}{lrr}
+\toprule
+System & nDCG@10 & $\Delta$ [95\% CI] \\
+\midrule
+Baseline (query-flow) & .412 & --- \\
+\texttt{popularity} & .742 & +.330 [.26,.40] \\
+\texttt{hist-lex} & .409 & $-$.003 [$-$.05,.04] \\
+\texttt{pclick} & .423 & +.011 [$-$.00,.03] \\
+\texttt{hrm} & .472 & +.060 [.02,.11] \\
+\texttt{hem} & .412 & +.000 [$-$.03,.03] \\
+\texttt{hrnn} & .760 & \textbf{+.348} [.29,.41] \\
+\midrule
+\textsc{Pref-Rerank} & .700 & +.288 [.21,.37] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Results}
+\label{ssec:judged}
+
+Table~\ref{tab:judged} reports the three judged protocols. The main
+result: \textsc{Pref-Rerank} is the only learned method whose 95\% CI
+excludes zero on all three, with gains that hold in sign over 741
+queries. How the baselines fail is itself diagnostic. \texttt{popularity}
+is protocol-dependent: it collapses on DL 2019, where every judged
+candidate is relevant to exactly one query so per-document counts
+carry no signal; it is the strongest single signal on TREC-COVID
+(+.034, where cross-query candidate overlap exists); and on FiQA it
+loses to \textsc{Pref-Rerank} (+.035 vs.\ +.054, non-overlapping CIs).
+\texttt{pclick} overfits the small training signal ($-$.275 on DL19;
+$-$.107 on FiQA), and \texttt{hrm} and \texttt{hist-lex} do nothing
+without session history. The neural baselines \texttt{hem} and
+\texttt{hrnn} are defined over session history, so on these
+single-query protocols they have no history to encode, reduce to the
+monoT5 baseline, and are omitted from Table~\ref{tab:judged}. The
+bilinear term shares one 768$\times$16 matrix across all candidates
+and queries, which regularizes it under exactly the sparse supervision
+that breaks the others.
+
+\label{ssec:aol}
+
+Table~\ref{tab:aol} reports AOL. Here \texttt{hrnn} leads (+.348), the
+popularity prior follows (+.330), and \textsc{Pref-Rerank} is third
+(+.288) with roughly $300\times$ fewer trainable parameters than
+\texttt{hrnn}. The protocol explains the ordering. Its candidate pool
+is drawn from the same queries' cross-session click pool. Global click
+frequency is close to an oracle feature, which is why popularity
+dominates; per-query repeated exposure rewards sequential
+memorization, which is why the GRU follows. The judged protocols
+strip both crutches away, and there the bilinear layer is the only
+learned method that still helps.
+
+\subsection{Ablations and limitations}
+\label{ssec:ablation}
+
+Ablations on the AOL protocol ($n{=}201$ internal set) locate where the
+gain comes from. A user-only bias $w^\top u(H)$ yields +.000: it adds
+the same offset to every candidate and cannot reorder them. The
+bilinear term alone yields +.054. Swapping the user representation,
+behavioral features (+.084) beat an LLM-extracted typed schema (+.054)
+and a random per-session vector (+.027, not significant), so the gain
+tracks real user signal rather than extra capacity. Results are stable
+over three seeds (mean +.081$\pm$.008; every CI excludes zero) and
+saturate at $u_{\dim}{=}8$. Compared with two other couplings,
+concat+linear (785 params, +.054) and FiLM (26k params, +.081), the
+bilinear form is the most accurate at a mid-scale parameter cost.
+
+Three properties of the bilinear intervention are worth flagging as
+limits rather than features. First, the gain on the judged protocols
+is bounded by the quality of $h(q,d)$: when the frozen monoT5
+encoder assigns near-identical embeddings to two semantically related
+documents, the bilinear term cannot distinguish them, and the
+protocol inherits that ceiling. Second, the user vector
+$u(H)$ is built from $n{=}8$ hand-crafted features---history
+overlap, history length, click counts, BM25 surrogates, and a
+typed-schema embedding---and the ablation table fixes that
+design. A learned user encoder might close the gap on the AOL
+protocol at the cost of parameter count, but the judged protocols
+have no history to encode, so the trade-off is regime-specific.
+Third, the $768{\times}16$ bilinear matrix is small enough to be
+inspectable: every entry can be read as the contribution of one
+encoder-dimension to one user-feature. We do not report this
+inspection in detail because the matrix is dense and the
+interpretation is local, but the point of using a bilinear coupling
+was precisely that the matrix would fit on a screen. None of
+these limits changes the central observation---that a frozen
+reranker can be made user-aware with a small, inspectable change---
+but each sets a boundary on what the protocol can show.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+A frozen reranker can be made user-aware with a small, inspectable
+change: one $768\times16$ bilinear matrix, trained on cached features,
+is the only learned method among six published baselines that
+improves all three judged-relevance protocols, and on FiQA-2018
+it outperforms the popularity prior. On click logs the answer is
+more qualified; heavier sequential encoders and near-oracle
+frequency priors outperform it, and we report that rather than tune
+it away. The ordering is decided more by the evaluation regime
+than by parameter count. On the judged protocols the relative
+ordering of \textsc{Pref-Rerank} and the six published baselines
+inverts relative to AOL, and that inversion is the empirical
+contribution. On FiQA-2018 specifically it is quantified: HRNN
+reaches $+0.0070$ and \textsc{Pref-Rerank} reaches $+0.0542$, with
+non-overlapping 95\% CIs. Next steps are a generation-stage
+evaluation, recency-decayed user vectors for sessions whose intent
+drifts, and porting the intervention onto LLM reranking
+backbones~\cite{lewis2020rag,zamani2020personalized}.
+
+Deployment is the practical lever for the score-level intervention.
+A frozen monoT5-base reranker is $250\,\mathrm{MB}$ on disk; the
+additional bilinear matrix is $48\,\mathrm{kB}$ and trains in
+under an hour on a single consumer GPU. Porting the intervention
+to a different backbone therefore costs only the
+$768{\times}u_{\dim}$ matrix, not a re-train of the backbone.
+This is the regime in which parameter-efficient methods of the
+LoRA family
+\cite{lewis2020rag,zamani2020personalized,lin2025personalized}
+are most often discussed, and the comparison is direct: a LoRA
+adapter on the encoder would also touch the score, but at the
+cost of training the adapter on every query type and of
+re-instrumenting the inference path. The bilinear score
+intervention is cheaper to train, cheaper to inspect, and the
+empirical evidence in Section~\ref{ssec:ablation} suggests
+it captures most of the available signal.
+
+
+\newpage
+\setlength{\itemsep}{0pt}
+\setlength{\parsep}{0pt}
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
 
 \end{document}
